@@ -1,6 +1,9 @@
 const express = require('express');
 const tourController = require('./../controllers/tourControllers.js');
 const router = express.Router();
+
+// val parameter is hold value of the id parameter
+router.param('id', tourController.checkID);
 // 3) ROUTE
 router
   .route('/')
