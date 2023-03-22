@@ -47,6 +47,7 @@ app.get('/api/v1/tours/:id', (req, res) => {
   });
 });
 
+// receive entire new updated object
 app.post('/api/v1/tours', (req, res) => {
   // console.log(req.body);
 
@@ -66,6 +67,23 @@ app.post('/api/v1/tours', (req, res) => {
       });
     }
   );
+});
+
+// simply update the properties
+app.patch('/api/v1/tours/:id', (req, res) => {
+  if (req.params.id * 1 > tours.length) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'Invalid ID',
+    });
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      tour: '<Update tour here...>',
+    },
+  });
 });
 const port = 3000;
 app.listen(port, () => {
