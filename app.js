@@ -8,8 +8,9 @@ const app = express();
 // 1) MIDDLEWARES
 // use middleware
 app.use(morgan('dev'));
-
 app.use(express.json());
+// Serving static files
+app.use(express.static(`${__dirname}/public`));
 
 app.use((req, res, next) => {
   console.log('Hello from the middleware');
