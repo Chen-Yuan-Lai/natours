@@ -1,21 +1,18 @@
+/* eslint-disable import/extensions */
 const express = require('express');
-const tourController = require('./../controllers/tourControllers.js');
+const tourController = require('../controllers/tourControllers.js');
+
 const router = express.Router();
 
 // val parameter is hold value of the id parameter
 // par middleware
-router.param('id', tourController.checkID);
-
-// Create a checkBody middleware
-// Check if body contains the name and price property
-// If not, send back 400 (bad request)
-// Add it to the post handler stack
+// router.param('id', tourController.checkID);
 
 // 3) ROUTE
 router
   .route('/')
   .get(tourController.getAllTours)
-  .post(tourController.checkBody, tourController.checkID);
+  .post(tourController.createTour);
 
 router
   .route('/:id')
