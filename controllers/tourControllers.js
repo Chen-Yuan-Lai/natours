@@ -1,4 +1,4 @@
-const Tour = require('../models/tourModels.js');
+const Tour = require('../models/tourModel');
 
 /* Practice, Show how middleware work
 const fs = require('fs');

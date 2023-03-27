@@ -1,6 +1,6 @@
 /* eslint-disable import/extensions */
 const express = require('express');
-const tourController = require('../controllers/tourControllers.js');
+const tourController = require('../controllers/tourControllers');
 
 const router = express.Router();
 
