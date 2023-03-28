@@ -50,9 +50,10 @@ const tourSchema = new mongoose.Schema({
   },
   // save images' name as an array of strings.
   images: [String],
-  createAt: {
+  createdAt: {
     type: Date,
     default: Date.now(),
+    select: false,
   },
   startDates: [Date],
 });
