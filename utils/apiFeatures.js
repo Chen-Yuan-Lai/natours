@@ -57,3 +57,27 @@ class APIFeatures {
 }
 
 module.exports = APIFeatures;
+
+/* Pratice databese query
+mogodb query using operator
+{ difficulty: 'easy', duration: { $gte: 5} }
+http query we extract
+{ difficulty: 'easy', duration: { gte: 5} }
+
+Two ways to write database queries
+way 1
+const tours = await Tour.find({
+  duration: 5,
+  difficulty: 'easy',
+});
+
+using query object
+don't use await because we may conduct a bunch of query mathods
+
+way 2
+const tours = Tour.find()
+  .where('duration')
+  .equals(5)
+  .where('difficulty')
+  .equals('easy');
+*/
