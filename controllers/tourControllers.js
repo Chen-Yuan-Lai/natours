@@ -47,10 +47,18 @@ exports.getAllTours = async (req, res) => {
     let queryStr = JSON.stringify(queryObj);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
     console.log(JSON.parse(queryStr));
-    const query = Tour.find(JSON.parse(queryStr));
+
+    let query = Tour.find(JSON.parse(queryStr));
 
     // 2) Sorting
-
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(',').join(' ');
+      console.log(sortBy);
+      query = query.sort(req.query.sort);
+      // sort('price' 'ratingsAverage')
+    } else {
+      query = query.sort();
+    }
     // mogodb query using operator
     // { difficulty: 'easy', duration: { $gte: 5} }
     // http query we extract
@@ -58,8 +66,9 @@ exports.getAllTours = async (req, res) => {
 
     // EXECUTE QUERY
     // use await to wait until query is already done
-    const tours = await query;
 
+    // await will try to unwrap any thenables (ex. query oibject)
+    const tours = await query;
     // SEND RESPONSE
     res.status(200).json({
       status: 'success',
