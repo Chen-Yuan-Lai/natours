@@ -35,8 +35,32 @@ exports.checkBody = (req, res, next) => {
 // ROUTE HANDLER
 exports.getAllTours = async (req, res) => {
   try {
-    const tours = await Tour.find();
+    console.log(req.query);
+    // BUILD QUERY
+    // 1A) Filtering
+    // create a shallow copy of query object
+    const queryObj = { ...req.query };
+    const excludedFields = ['page', 'sort', 'limit', 'field'];
+    excludedFields.forEach((el) => delete queryObj[el]);
 
+    // 1B) Advanced filtering
+    let queryStr = JSON.stringify(queryObj);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+    console.log(JSON.parse(queryStr));
+    const query = Tour.find(JSON.parse(queryStr));
+
+    // 2) Sorting
+
+    // mogodb query using operator
+    // { difficulty: 'easy', duration: { $gte: 5} }
+    // http query we extract
+    // { difficulty: 'easy', duration: { gte: 5} }
+
+    // EXECUTE QUERY
+    // use await to wait until query is already done
+    const tours = await query;
+
+    // SEND RESPONSE
     res.status(200).json({
       status: 'success',
       results: tours.length,
@@ -44,6 +68,23 @@ exports.getAllTours = async (req, res) => {
         tours,
       },
     });
+    ////////////////////////////////////////////////////
+    // Two ways to write database queries
+    // way 1
+    // const tours = await Tour.find({
+    //   duration: 5,
+    //   difficulty: 'easy',
+    // });
+
+    // using query object
+    // don't use await because we may conduct a bunch of query mathods
+
+    // way 2
+    // const tours = Tour.find()
+    //   .where('duration')
+    //   .equals(5)
+    //   .where('difficulty')
+    //   .equals('easy');
   } catch (err) {
     res.status(404).json({
       status: 'fail',
