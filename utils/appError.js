@@ -4,7 +4,7 @@ class AppError extends Error {
 
     this.statusCode = statusCode;
     this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
-    // errors created using this classs are operational errors
+    // errors created ourselves are operational errors
     // some programming errors are not have this property
     this.isOperational = true;
 
