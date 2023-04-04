@@ -36,7 +36,7 @@ exports.getTour = catchAsync(async (req, res, next) => {
   const tour = await Tour.findById(req.params.id);
 
   // errors come from mongoose do not have statusCode
-  // create an error with statusb ID
+  // create an error with status ID
   if (!tour) {
     return next(new AppError('No tour found with that ID', 404));
   }
