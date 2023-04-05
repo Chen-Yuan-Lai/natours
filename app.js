@@ -16,6 +16,10 @@ app.use(express.json());
 // Serving static files
 app.use(express.static(`${__dirname}/public`));
 
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+});
+
 // 3) Mounting ROUTES
 // mounting the router
 app.use('/api/v1/tours', tourRouter);
@@ -30,6 +34,10 @@ app.all('*', (req, res, next) => {
   // to our global error handling middleware,
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
+
+// when there is an error happened in express, it
+// will automatically go to the error-handling middleware
+// with that error
 
 // error handling middleware
 app.use(globalErrorhandler);
