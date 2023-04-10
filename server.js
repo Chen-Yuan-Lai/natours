@@ -6,7 +6,8 @@ const dotenv = require('dotenv');
 process.on('uncaughtException', (err) => {
   console.log('UNCAUGHT EXCEPTION! Shutting down');
   console.log(err.name, err.message);
-  // we don't have ann async task
+  console.log(err);
+  // we don't have any async task
   process.exit(1);
 });
 

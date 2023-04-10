@@ -23,6 +23,8 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Please provide a password'],
     nuique: true,
     minlength: 8,
+    // never show up in any output
+    select: false,
   },
   // required: true means this field is a required input
   // not means it should be persisted to the database
@@ -55,6 +57,13 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+// Create the instance method that is gonna be available on all documents
+userSchema.methods.correctPassword = async function (
+  candidatePassword,
+  userPassword
+) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;
