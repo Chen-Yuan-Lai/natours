@@ -64,6 +64,15 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+userSchema.pre('save', function (next) {
+  if (!this.isModified('password') || this.isNew) return next();
+
+  // Sometimes JWT is created earlier than we define passwordChangeAt property
+  // So we need to set the property early to pass the protect controller
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
 // Create the instance method that is gonna be available on all documents
 userSchema.methods.correctPassword = async function (
   candidatePassword,
@@ -98,7 +107,8 @@ userSchema.methods.createPasswordResetToken = function () {
 
   console.log({ resetToken }, this.passwordResetToken);
   // for 10 mins
-  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+  const time = Date.now() + 10 * 60 * 1000;
+  this.passwordResetExpires = time;
 
   return resetToken;
 };
