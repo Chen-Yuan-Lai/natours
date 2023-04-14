@@ -2,6 +2,9 @@ const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
 
 const AppError = require('./utils/appError');
 const globalErrorhandler = require('./controllers/errorController');
@@ -13,6 +16,7 @@ const app = express();
 // Set security HTTP headers
 app.use(helmet());
 
+// development logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
@@ -26,10 +30,39 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-app.use(express.json());
+// Body parser, reading data from body into req.body
+// restrict body size
+app.use(express.json({ limit: '10kb' }));
+
+// Data sanitization against NoSQL query injection
+// Look at the request body, the request query string,
+// and also at Request.Params, and then it will basically filter out
+// all of the dollar signs and dots,
+app.use(mongoSanitize());
+// Data sanitization against XSS
+// prevent that basically by converting all these HTML symbols.
+app.use(xss());
+
+// Prevent parameter pollution
+// white list is simply an array of properties
+// for which we actually allow duplicates in the query string.
+app.use(
+  hpp({
+    whitelist: [
+      'duration',
+      'ratingQuanity',
+      'ratingsAverage',
+      'maxGroupSize',
+      'difficulty',
+      'price',
+    ],
+  })
+);
+
 // Serving static files
 app.use(express.static(`${__dirname}/public`));
 
+// Test middleware
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
   next();
