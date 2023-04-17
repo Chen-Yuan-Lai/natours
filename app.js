@@ -7,9 +7,10 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 
 const AppError = require('./utils/appError');
-const globalErrorhandler = require('./controllers/errorController');
+const globalErrorhandler = require('./controllers/errorControllers');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
+const reviewRouter = require('./routes/reviewRoutes');
 
 const app = express();
 // 1) GLOBAL MIDDLEWARES
@@ -72,6 +73,7 @@ app.use((req, res, next) => {
 // mounting the router
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/reviews', reviewRouter);
 
 // handle other routes
 app.all('*', (req, res, next) => {
