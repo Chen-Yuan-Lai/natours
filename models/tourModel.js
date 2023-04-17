@@ -182,6 +182,16 @@ tourSchema.pre(/^find/, function (next) {
   next();
 });
 
+tourSchema.pre(/^find/, function (next) {
+  // populate only happen only in queries
+  this.populate({
+    path: 'guides',
+    // not select __v and passwordCgangeAt fields
+    select: '-v -passwordCgangedAt',
+  });
+  next();
+});
+
 tourSchema.post(/^find/, function (docs, next) {
   console.log(`Query took ${Date.now() - this.start} milliseconds!`);
   next();
