@@ -88,6 +88,33 @@ const tourSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // embedded object
+    startLocation: {
+      // GeoJSON
+      type: {
+        type: String,
+        default: 'Point0',
+        enum: ['Point'],
+      },
+      coordinates: [Number],
+      address: String,
+      description: String,
+    },
+    // in order to really create new documents and then embed them into another document,
+    // we actually need to create an array.
+    locations: [
+      {
+        type: {
+          type: String,
+          default: 'Point',
+          enum: ['Point'],
+        },
+        coordinates: [Number],
+        address: String,
+        description: String,
+        day: Number,
+      },
+    ],
   },
   {
     // second an object for the options.
