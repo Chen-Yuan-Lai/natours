@@ -34,15 +34,17 @@ const reviewSchema = new mongoose.Schema(
 );
 
 // query middleware
-// reviewSchema.pre(/^find/, function (next) {
-//   // populate only happen only in queries
-//   this.populate({
-//     path: ['tours', 'users'],
-//     // not select __v field
-//     select: '-v',
-//   });
-//   next();
-// });
+reviewSchema.pre(/^find/, function (next) {
+  // populate only happen only in queries
+  this.populate({
+    path: 'tour',
+    select: 'name',
+  }).populate({
+    path: 'user',
+    select: 'name photo',
+  });
+  next();
+});
 
 const Review = mongoose.model('Review', reviewSchema);
 
