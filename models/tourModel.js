@@ -139,6 +139,14 @@ tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7;
 });
 
+// Virtual populate
+// Mongoose will populate those documents from the model given in ref,
+// whose foreignField value will match with the localField value of the current collection.
+tourSchema.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'tour',
+  localField: '_id',
+});
 /*
 We cannot use this virtual property here
 in a query, because they're technically

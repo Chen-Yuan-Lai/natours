@@ -33,7 +33,7 @@ exports.getAllTours = catchAsync(async (req, res, next) => {
 exports.getTour = catchAsync(async (req, res, next) => {
   // using id parameter in request added by router
   // .findById() equal to .findOne({_id: req.params.id})
-  const tour = await Tour.findById(req.params.id);
+  const tour = await Tour.findById(req.params.id).populate('reviews');
 
   // errors come from mongoose do not have statusCode
   // create an error with status ID
