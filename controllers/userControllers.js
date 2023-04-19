@@ -10,7 +10,11 @@ const filterObj = (obj, ...allowedFields) => {
   });
   return newObj;
 };
-// ROUTE HANDLER
+
+exports.getMe = (req, res, next) => {
+  req.params.id = req.user.id;
+  next();
+};
 
 // In a typical web application, we usually upadte user date and password in different routes
 exports.updateMe = catchAsync(async (req, res, next) => {
