@@ -132,6 +132,9 @@ const tourSchema = new mongoose.Schema(
   }
 );
 
+tourSchema.index({ price: 1, ratingsAverage: -1 });
+tourSchema.index({ slug: 1 });
+
 // Virtual properties, call back function should not use arrow function
 // because we need this keyword in the function
 // get method: this virtual propperty here will basically be created each time
