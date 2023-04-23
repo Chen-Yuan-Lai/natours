@@ -135,8 +135,13 @@ const tourSchema = new mongoose.Schema(
   }
 );
 
+// Index
 tourSchema.index({ price: 1, ratingsAverage: -1 });
 tourSchema.index({ slug: 1 });
+// So for geospatial data, this index needs to be a 2D sphere index if the data describes real
+// points on the Earth like sphere. Or instead, we can also use a 2D index if we're using
+// just fictional points on a simple two dimensional plane.
+tourSchema.index({ startLocation: '2dsphere' });
 
 // Virtual properties, call back function should not use arrow function
 // because we need this keyword in the function
@@ -213,12 +218,12 @@ tourSchema.post(/^find/, function (docs, next) {
 
 // AGGREGATION MIDDLEWARE
 // this is going to point to the current aggregation object.
-tourSchema.pre('aggregate', function (next) {
-  // put another match object into the first element of pipeline array
-  this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
-  console.log(this.pipeline());
-  next();
-});
+// tourSchema.pre('aggregate', function (next) {
+//   // put another match object into the first element of pipeline array
+//   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
+//   console.log(this.pipeline());
+//   next();
+// });
 const Tour = mongoose.model('Tour', tourSchema);
 
 module.exports = Tour;

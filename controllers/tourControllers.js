@@ -2,6 +2,7 @@ const Tour = require('../models/tourModel');
 const catchAsync = require('../utils/catchAsync');
 const factory = require('./handlerFactory');
 // const APIFeatures = require('../utils/apiFeatures');
+const AppError = require('../utils/appError');
 
 // ROUTE HANDLER
 exports.aliasTopTours = (req, res, next) => {
@@ -95,6 +96,84 @@ exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
     status: 'success',
     data: {
       plan,
+    },
+  });
+});
+
+// /tours-within/:distance/center/:latlng/unit/:unit
+exports.getToursWithin = catchAsync(async (req, res, next) => {
+  const { distance, latlng, unit } = req.params;
+  const [lat, lng] = latlng.split(',');
+
+  // radian = distance / radius of the Earth
+  const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
+
+  if (!lat || !lng) {
+    next(
+      new AppError(
+        'PLease provide latitutr and lngitude in the format lat, lng.',
+        400
+      )
+    );
+  }
+
+  const tours = await Tour.find({
+    startLocation: { $geoWithin: { $centerSphere: [[lng, lat], radius] } },
+  });
+
+  res.status(200).json({
+    status: 'sucess',
+    results: tours.length,
+    data: {
+      data: tours,
+    },
+  });
+});
+
+exports.getDistances = catchAsync(async (req, res, next) => {
+  const { latlng, unit } = req.params;
+  const [lat, lng] = latlng.split(',');
+
+  const multiplier = unit === 'mi' ? 0.000621371 : 0.001;
+
+  if (!lat || !lng) {
+    next(
+      new AppError(
+        'PLease provide latitutr and lngitude in the format lat, lng.',
+        400
+      )
+    );
+  }
+
+  const distances = await Tour.aggregate([
+    {
+      // geoNear always needs to be the first one in the pipeline
+      // geoNear requires at least one of our fields contains a geospatial index.
+      // If only one field with a geospatial index geoNear stage here automatically use
+      // if you have multiple fields with geospatial indexes,
+      // then you need to use the key parameter to define that field you want to use.
+      $geoNear: {
+        // geojason
+        near: {
+          type: 'Point',
+          coordinates: [lng * 1, lat * 1],
+        },
+        distanceField: 'distance',
+        distanceMultiplier: multiplier,
+      },
+    },
+    {
+      $project: {
+        distance: 1,
+        name: 1,
+      },
+    },
+  ]);
+
+  res.status(200).json({
+    status: 'sucess',
+    data: {
+      data: distances,
     },
   });
 });
