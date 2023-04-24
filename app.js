@@ -15,9 +15,12 @@ const reviewRouter = require('./routes/reviewRoutes');
 
 const app = express();
 
-app.set('viewengine', 'pug');
 app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'pug');
 // 1) GLOBAL MIDDLEWARES
+// Serving static files
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Set security HTTP headers
 app.use(helmet());
 
@@ -64,9 +67,6 @@ app.use(
   })
 );
 
-// Serving static files
-app.use(express.static(path.join(__dirname, 'public')));
-
 // Test middleware
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
@@ -76,7 +76,10 @@ app.use((req, res, next) => {
 // 3) Mounting ROUTES
 // mounting the router
 app.get('/', (req, res) => {
-  res.status(200).render('base');
+  res.status(200).render('base', {
+    tour: 'The Forest Hiker',
+    user: 'Jonas',
+  });
 });
 
 app.use('/api/v1/tours', tourRouter);
