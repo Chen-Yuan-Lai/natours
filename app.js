@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const cookieParser = require('cookie-parser');
 
 const AppError = require('./utils/appError');
 const globalErrorhandler = require('./controllers/errorControllers');
@@ -25,31 +26,48 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Set security HTTP headers
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        'worker-src': ['blob:'],
-        'child-src': ['blob:', 'https://js.stripe.com/'],
-        'img-src': ["'self'", 'data: image/webp'],
-        'script-src': [
-          "'self'",
-          'https://api.mapbox.com',
-          'https://cdnjs.cloudflare.com',
-          'https://js.stripe.com/v3/',
-          "'unsafe-inline'",
-        ],
-        'connect-src': [
-          "'self'",
-          'ws://localhost:*',
-          'ws://127.0.0.1:*',
-          'http://127.0.0.1:*',
-          'http://localhost:*',
-          'https://*.tiles.mapbox.com',
-          'https://api.mapbox.com',
-          'https://events.mapbox.com',
-        ],
-      },
-    },
     crossOriginEmbedderPolicy: false,
+  })
+);
+
+// Further HELMET configuration for Security Policy (CSP)
+const scriptSrcUrls = [
+  'https://api.tiles.mapbox.com/',
+  'https://api.mapbox.com/',
+  'https://*.cloudflare.com',
+  'https://js.stripe.com/v3/',
+  'https://checkout.stripe.com',
+];
+const styleSrcUrls = [
+  'https://api.mapbox.com/',
+  'https://api.tiles.mapbox.com/',
+  'https://fonts.googleapis.com/',
+  'https://www.myfonts.com/fonts/radomir-tinkov/gilroy/*',
+  ' checkout.stripe.com',
+];
+const connectSrcUrls = [
+  'https://*.mapbox.com/',
+  'https://*.cloudflare.com',
+  'http://127.0.0.1:8000',
+  'http://127.0.0.1:52191',
+  '*.stripe.com',
+];
+
+const fontSrcUrls = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: [],
+      connectSrc: ["'self'", ...connectSrcUrls],
+      scriptSrc: ["'self'", ...scriptSrcUrls],
+      workerSrc: ["'self'", 'blob:'],
+      styleSrc: ["'self'", "'unsafe-inline'", ...styleSrcUrls],
+      objectSrc: [],
+      imgSrc: ["'self'", 'blob:', 'data:'],
+      fontSrc: ["'self'", ...fontSrcUrls],
+      frameSrc: ['*.stripe.com', '*.stripe.network'],
+    },
   })
 );
 
@@ -70,6 +88,7 @@ app.use('/api', limiter);
 // Body parser, reading data from body into req.body
 // restrict body size
 app.use(express.json({ limit: '10kb' }));
+app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection
 // Look at the request body, the request query string,
@@ -99,6 +118,7 @@ app.use(
 // Test middleware
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
+  console.log(req.cookies);
   next();
 });
 

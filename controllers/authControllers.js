@@ -20,7 +20,7 @@ const createSendToken = (user, statusCode, res) => {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    httpOny: true, // the cookie cannot be accessed or modified in any way by the browser.
+    httpOnly: true, // the cookie cannot be accessed or modified in any way by the browser.
   };
   if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
   // create a cookie
@@ -72,6 +72,15 @@ exports.login = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
+// Override the current cookie that we have in the browser with one
+// that has the same name but no token.
+exports.logout = (req, res) => {
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+  });
+  res.status(200).json({ status: 'success' });
+};
+
 exports.protect = catchAsync(async (req, res, next) => {
   // 1) Getting token and check if it's there
   let token;
@@ -80,6 +89,8 @@ exports.protect = catchAsync(async (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.jwt) {
+    token = req.cookies.jwt;
   }
 
   if (!token) {
@@ -111,6 +122,39 @@ exports.protect = catchAsync(async (req, res, next) => {
   req.user = currentUser; // for next middleware
   next();
 });
+
+// Only for rendered pages, no errors!
+exports.isLoggedIn = async (req, res, next) => {
+  // 1) Getting token and check if it's there
+  try {
+    if (req.cookies.jwt) {
+      // 1) Varification token
+      const decoded = await promisify(jwt.verify)(
+        req.cookies.jwt,
+        process.env.JWT_SECRET
+      );
+      // 2) Check if user still exists
+      const currentUser = await User.findById(decoded.id);
+      if (!currentUser) {
+        return next();
+      }
+
+      // 3) Check if user changed password password after the token was issued
+      if (currentUser.changePasswordAfter(decoded.iat)) {
+        return next();
+      }
+
+      // THERE IS A LOGGED IN USER
+      // Each and every pug template will have access to response .locals
+      // and whatever we put there will then be a variable inside of these templates.
+      res.locals.user = currentUser;
+      return next();
+    }
+  } catch (err) {
+    return next();
+  }
+  next();
+};
 
 // closure
 exports.restrictTo = (...roles) => {
