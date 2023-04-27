@@ -24,13 +24,8 @@ app.set('view engine', 'pug');
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Set security HTTP headers
-app.use(
-  helmet({
-    crossOriginEmbedderPolicy: false,
-  })
-);
-
 // Further HELMET configuration for Security Policy (CSP)
+
 const scriptSrcUrls = [
   'https://api.tiles.mapbox.com/',
   'https://api.mapbox.com/',
@@ -48,8 +43,8 @@ const styleSrcUrls = [
 const connectSrcUrls = [
   'https://*.mapbox.com/',
   'https://*.cloudflare.com',
-  'http://127.0.0.1:8000',
-  'http://127.0.0.1:52191',
+  // 'http://127.0.0.1:8000',
+  // 'http://127.0.0.1:52191',
   '*.stripe.com',
 ];
 
@@ -58,12 +53,12 @@ const fontSrcUrls = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
-      defaultSrc: [],
+      defaultSrc: ["'self'"],
       connectSrc: ["'self'", ...connectSrcUrls],
       scriptSrc: ["'self'", ...scriptSrcUrls],
       workerSrc: ["'self'", 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'", ...styleSrcUrls],
-      objectSrc: [],
+      // objectSrc: [],
       imgSrc: ["'self'", 'blob:', 'data:'],
       fontSrc: ["'self'", ...fontSrcUrls],
       frameSrc: ['*.stripe.com', '*.stripe.network'],
