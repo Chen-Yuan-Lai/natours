@@ -18,6 +18,9 @@ exports.getMe = (req, res, next) => {
 
 // In a typical web application, we usually upadte user date and password in different routes
 exports.updateMe = catchAsync(async (req, res, next) => {
+  console.log(req.file);
+  console.log(req.body);
+
   // 1) Create error if user POSTs password data
   if (req.body.password || req.body.passwordConfiem) {
     return next(
