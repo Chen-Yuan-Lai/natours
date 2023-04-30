@@ -1,9 +1,6 @@
 const express = require('express');
-const multer = require('multer');
 const userController = require('../controllers/userControllers');
 const authController = require('../controllers/authControllers');
-
-const upload = multer({ dest: 'public/img/users' });
 
 const router = express.Router();
 // ROUTE
@@ -21,7 +18,12 @@ router.patch('/updateMyPassword', authController.updatePassword);
 router.get('/me', userController.getMe, userController.getUser);
 // multer middleware will then take care of taking the file and basically copying it
 // to the destination that we specified.
-router.patch('/updateMe', upload.single('photo'), userController.updateMe);
+router.patch(
+  '/updateMe',
+  userController.uploadUserPhoto,
+  userController.resizeUserPhoto,
+  userController.updateMe
+);
 router.delete('/deleteMe', userController.deleteMe);
 
 router.use(authController.restrictTo('admin'));
