@@ -7,13 +7,20 @@ module.exports = class Email {
     this.to = user.email;
     this.firstName = user.name.split(' ')[0];
     this.url = url;
-    this.from = `Ian Lai <${process.env.Email_FROM}>`;
+    this.from = `Ian Lai <${process.env.EMAIL_FROM}>`;
   }
 
   newTransport() {
     if (process.env.NODE_ENV === 'production') {
       // Sendgrid: send real email
-      return 1;
+      return nodemailer.createTransport({
+        host: 'smtp-relay.sendinblue.com',
+        port: 587,
+        auth: {
+          user: process.env.SENDINBLUE_USERNAME,
+          pass: process.env.SENDINBLUE_PASSWORD,
+        },
+      });
     }
 
     // sandbox
