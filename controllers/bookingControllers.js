@@ -4,6 +4,7 @@ const Tour = require('../models/tourModel');
 const Booking = require('../models/bookingModel');
 const catchAsync = require('../utils/catchAsync');
 const factory = require('./handlerFactory');
+// const AppError = require('../utils/appError');
 
 const gateway = new braintree.BraintreeGateway({
   environment: braintree.Environment.Sandbox,
@@ -35,19 +36,16 @@ exports.createTransaction = catchAsync(async (req, res, next) => {
     },
   });
 
-  res.status(200).json({
-    status: 'success',
-    data: transaction,
-  });
-});
-
-exports.createBooking = catchAsync(async (req, res, next) => {
-  await Booking.create({
+  // reset req.body to fit the requirement of the factory function
+  req.body = {
     tour: req.body.tourId,
     user: req.user.id,
     price: tour.price,
-  });
+  };
 });
-exports.getAllBooking = catchAsync(async (req, res, next) => {});
-exports.getBooking = catchAsync(async (req, res, next) => {});
-exports.getBooking = catchAsync(async (req, res, next) => {});
+
+exports.createBooking = factory.createOne(Booking);
+exports.getAllBooking = factory.getAll(Booking);
+exports.getBooking = factory.getOne(Booking);
+exports.updateBooking = factory.updateOne(Booking);
+exports.deleteBooking = factory.deleteOne(Booking);

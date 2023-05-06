@@ -33,8 +33,6 @@ const scriptSrcUrls = [
   'https://*.cloudflare.com',
   'https://js.braintreegateway.com/',
   'https://code.jquery.com/',
-  // 'https://www.paypal.com/',
-  // 'https://www.sandbox.paypal.com/',
   // 'https://js.stripe.com/v3/',
   // 'https://checkout.stripe.com',
 ];
@@ -44,7 +42,6 @@ const styleSrcUrls = [
   'https://fonts.googleapis.com/',
   'https://www.myfonts.com/fonts/radomir-tinkov/gilroy/*',
   'https://assets.braintreegateway.com/',
-  // 'https://www.paypalobjects.com/',
   // ' checkout.stripe.com',
 ];
 const connectSrcUrls = [
@@ -53,7 +50,6 @@ const connectSrcUrls = [
   'https://payments.sandbox.braintree-api.com/',
   'https://api.sandbox.braintreegateway.com/',
   'https://origin-analytics-sand.sandbox.braintree-api.com/',
-  // 'https://www.sandbox.paypal.com/',
   // 'http://127.0.0.1:8000',
   // 'http://127.0.0.1:52191',
   // '*.stripe.com',
@@ -70,7 +66,7 @@ app.use(
       workerSrc: ["'self'", 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'", ...styleSrcUrls],
       // objectSrc: [],
-      imgSrc: ["'self'", 'blob:', 'data:', 'https://www.paypalobjects.com/'],
+      imgSrc: ["'self'", 'blob:', 'data:'],
       fontSrc: ["'self'", ...fontSrcUrls],
       frameSrc: ['https://assets.braintreegateway.com/'],
     },
