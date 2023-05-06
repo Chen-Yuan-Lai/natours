@@ -9,7 +9,7 @@ export const getToken = async () => {
   try {
     const res = await axios({
       method: 'GET',
-      url: 'http://127.0.0.1:8000/api/v1/bookings/client_token',
+      url: '/api/v1/bookings/client_token',
     });
 
     return res.data.clientToken;
@@ -36,7 +36,7 @@ export const sendNonce = async (dropinInstance, tourId) => {
     const nonce = payload.nonce;
     await axios({
       method: 'POST',
-      url: 'http://127.0.0.1:8000/api/v1/bookings/checkout',
+      url: '/api/v1/bookings/checkout',
       data: {
         payment_method_nonce: nonce,
         tourId,
