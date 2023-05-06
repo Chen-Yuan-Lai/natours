@@ -1,0 +1,41 @@
+doctype html
+html
+  head
+    meta(charset='utf-8')
+    meta(name='viewport', content='width=device-width, initial-scale=1')
+    link(rel='shortcut icon' type='image/png' href='/img/favicon.png')
+    link(rel='stylesheet', type='text/css', href='https://www.paypalobjects.com/webstatic/en_US/developer/docs/css/cardfields.css')
+    script(src=`https://www.paypal.com/sdk/js?components=buttons,hosted-fields&client-id=${clientId}`, data-client-token=`${clientToken}`)
+  body
+    #paypal-button-container.paypal-button-container
+    .card_container
+      form#card-form
+        label(for='card-number') Card Number
+        #card-number.card_field
+        div(style='display: flex; flex-direction: row;')
+          div
+            label(for='expiration-date') Expiration Date
+            #expiration-date.card_field
+          div(style='margin-left: 10px;')
+            label(for='cvv') CVV
+            #cvv.card_field
+        label(for='card-holder-name') Name on Card
+        input#card-holder-name(type='text', name='card-holder-name', autocomplete='off', placeholder='card holder name')
+        div
+          label(for='card-billing-address-street') Billing Address
+          input#card-billing-address-street(type='text', name='card-billing-address-street', autocomplete='off', placeholder='street address')
+        div
+          label(for='card-billing-address-unit') &nbsp;
+          input#card-billing-address-unit(type='text', name='card-billing-address-unit', autocomplete='off', placeholder='unit')
+        div
+          input#card-billing-address-city(type='text', name='card-billing-address-city', autocomplete='off', placeholder='city')
+        div
+          input#card-billing-address-state(type='text', name='card-billing-address-state', autocomplete='off', placeholder='state')
+        div
+          input#card-billing-address-zip(type='text', name='card-billing-address-zip', autocomplete='off', placeholder='zip / postal code')
+        div
+          input#card-billing-address-country(type='text', name='card-billing-address-country', autocomplete='off', placeholder='country code')
+        br
+        br
+        button#submit.btn(value='submit') Pay
+    script(src='/js/paypal.js')

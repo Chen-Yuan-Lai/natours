@@ -3,6 +3,7 @@ const express = require('express');
 const tourController = require('../controllers/tourControllers');
 const authController = require('../controllers/authControllers');
 const reviewRouter = require('./reviewRoutes');
+const bookingsRouter = require('./bookingRoutes');
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ const router = express.Router();
 // To access the reviews resource on the tour's resource => nested route
 
 router.use('/:tourId/reviews', reviewRouter);
+router.use('/:tourId/bookings', bookingsRouter);
 
 router
   .route('/top-5-cheap')

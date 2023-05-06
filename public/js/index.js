@@ -4,6 +4,8 @@
 import { displayMap } from './mapbox';
 import { login, logout } from './login';
 import { updateSettings } from './updateSettings';
+import { getToken, sendNonce, createDropIn } from './braintree';
+import { token } from 'morgan';
 
 // DOM ELEMENTS
 const mapBox = document.getElementById('map');
@@ -11,6 +13,7 @@ const loginForm = document.querySelector('.form--login');
 const logOutBtn = document.querySelector('.nav__el--logout');
 const userDataForm = document.querySelector('.form-user-data');
 const userPasswordForm = document.querySelector('.form-user-password');
+const container = document.querySelector('#dropin-container');
 
 // DELEGATION
 if (mapBox) {
@@ -62,3 +65,25 @@ if (userPasswordForm) {
     document.getElementById('password-confirm').value = '';
   });
 }
+
+if (container) {
+  const button = document.querySelector('#submit-button');
+
+  getToken()
+    .then((token) => createDropIn(token))
+    .then((dropinInstance) => {
+      button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.target.textContent = 'Processing...';
+        const { tourId } = e.target.dataset;
+        await sendNonce(dropinInstance, tourId);
+        location.assign('/');
+      });
+    });
+}
+// const cleanFlow = async () => {
+//   const token = await getToken();
+//   const instance = await createDropIn(token);
+//   console.log(instance);
+//   return instance;
+// };

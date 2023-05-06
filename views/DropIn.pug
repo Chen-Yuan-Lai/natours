@@ -1,0 +1,9 @@
+extends base
+
+block append head
+  script(src='https://js.braintreegateway.com/web/dropin/1.36.1/js/dropin.js')
+
+block content
+  #dropin-container
+    //- Step one: add an empty container to your page
+  button.btn--green.btn-small#submit-button(data-tour-id=`${tour.id}`) Purchase

@@ -19,6 +19,7 @@
   "dependencies": {
     "axios": "^1.3.6",
     "bcryptjs": "^2.4.3",
+    "braintree": "^3.15.0",
     "cookie-parser": "^1.4.6",
     "core-js": "^3.30.1",
     "dotenv": "^16.0.3",
@@ -32,6 +33,7 @@
     "mongoose": "^5.13.16",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "node-fetch": "^2.6.9",
     "nodemailer": "^6.9.1",
     "pug": "^3.0.2",
     "sharp": "^0.32.1",
@@ -40,7 +42,10 @@
     "xss-clean": "^0.1.1"
   },
   "devDependencies": {
+    "assert": "^2.0.0",
+    "browserify-zlib": "^0.2.0",
     "buffer": "^5.7.1",
+    "crypto-browserify": "^3.12.0",
     "eslint": "^8.36.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^8.8.0",
@@ -49,8 +54,20 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-react": "^7.32.2",
+    "events": "^3.3.0",
+    "https-browserify": "^1.0.0",
     "parcel": "^2.8.3",
-    "prettier": "^2.8.6"
+    "path-browserify": "^1.0.1",
+    "prettier": "^2.8.6",
+    "process": "^0.11.10",
+    "punycode": "^1.4.1",
+    "querystring-es3": "^0.2.1",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "string_decoder": "^1.3.0",
+    "timers-browserify": "^2.0.12",
+    "url": "^0.11.0",
+    "util": "^0.12.5"
   },
   "engines": {
     "node": ">=10.0.0"

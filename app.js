@@ -13,6 +13,7 @@ const globalErrorhandler = require('./controllers/errorControllers');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
+const bookingRouter = require('./routes/bookingRoutes');
 const viewRouter = require('./routes/viewRoutes');
 
 const app = express();
@@ -30,22 +31,32 @@ const scriptSrcUrls = [
   'https://api.tiles.mapbox.com/',
   'https://api.mapbox.com/',
   'https://*.cloudflare.com',
-  'https://js.stripe.com/v3/',
-  'https://checkout.stripe.com',
+  'https://js.braintreegateway.com/',
+  'https://code.jquery.com/',
+  // 'https://www.paypal.com/',
+  // 'https://www.sandbox.paypal.com/',
+  // 'https://js.stripe.com/v3/',
+  // 'https://checkout.stripe.com',
 ];
 const styleSrcUrls = [
   'https://api.mapbox.com/',
   'https://api.tiles.mapbox.com/',
   'https://fonts.googleapis.com/',
   'https://www.myfonts.com/fonts/radomir-tinkov/gilroy/*',
-  ' checkout.stripe.com',
+  'https://assets.braintreegateway.com/',
+  // 'https://www.paypalobjects.com/',
+  // ' checkout.stripe.com',
 ];
 const connectSrcUrls = [
   'https://*.mapbox.com/',
   'https://*.cloudflare.com',
+  'https://payments.sandbox.braintree-api.com/',
+  'https://api.sandbox.braintreegateway.com/',
+  'https://origin-analytics-sand.sandbox.braintree-api.com/',
+  // 'https://www.sandbox.paypal.com/',
   // 'http://127.0.0.1:8000',
   // 'http://127.0.0.1:52191',
-  '*.stripe.com',
+  // '*.stripe.com',
 ];
 
 const fontSrcUrls = ['fonts.googleapis.com', 'fonts.gstatic.com'];
@@ -55,13 +66,13 @@ app.use(
     directives: {
       defaultSrc: ["'self'"],
       connectSrc: ["'self'", ...connectSrcUrls],
-      scriptSrc: ["'self'", ...scriptSrcUrls],
+      scriptSrc: ["'self'", "'unsafe-inline'", ...scriptSrcUrls],
       workerSrc: ["'self'", 'blob:'],
       styleSrc: ["'self'", "'unsafe-inline'", ...styleSrcUrls],
       // objectSrc: [],
-      imgSrc: ["'self'", 'blob:', 'data:'],
+      imgSrc: ["'self'", 'blob:', 'data:', 'https://www.paypalobjects.com/'],
       fontSrc: ["'self'", ...fontSrcUrls],
-      frameSrc: ['*.stripe.com', '*.stripe.network'],
+      frameSrc: ['https://assets.braintreegateway.com/'],
     },
   })
 );
@@ -124,6 +135,7 @@ app.use('/', viewRouter);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/reviews', reviewRouter);
+app.use('/api/v1/bookings', bookingRouter);
 
 // handle other routes
 app.all('*', (req, res, next) => {

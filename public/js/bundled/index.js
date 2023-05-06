@@ -148,12 +148,15 @@
 var _mapbox = require("./mapbox");
 var _login = require("./login");
 var _updateSettings = require("./updateSettings");
+var _braintree = require("./braintree");
+var _morgan = require("morgan");
 // DOM ELEMENTS
 const mapBox = document.getElementById("map");
 const loginForm = document.querySelector(".form--login");
 const logOutBtn = document.querySelector(".nav__el--logout");
 const userDataForm = document.querySelector(".form-user-data");
 const userPasswordForm = document.querySelector(".form-user-password");
+const container = document.querySelector("#dropin-container");
 // DELEGATION
 if (mapBox) {
     // Whatever we put into a data attribute like data-locations,
@@ -194,8 +197,25 @@ if (userPasswordForm) userPasswordForm.addEventListener("submit", async (e)=>{
     document.getElementById("password").value = "";
     document.getElementById("password-confirm").value = "";
 });
+if (container) {
+    const button = document.querySelector("#submit-button");
+    (0, _braintree.getToken)().then((token)=>(0, _braintree.createDropIn)(token)).then((dropinInstance)=>{
+        button.addEventListener("click", async (e)=>{
+            e.preventDefault();
+            e.target.textContent = "Processing...";
+            const { tourId  } = e.target.dataset;
+            await (0, _braintree.sendNonce)(dropinInstance, tourId);
+            location.assign("/");
+        });
+    });
+} // const cleanFlow = async () => {
+ //   const token = await getToken();
+ //   const instance = await createDropIn(token);
+ //   console.log(instance);
+ //   return instance;
+ // };
 
-},{"./mapbox":"boTQ2","./login":"aUJqG","./updateSettings":"j7xLx"}],"boTQ2":[function(require,module,exports) {
+},{"./mapbox":"boTQ2","./login":"aUJqG","./updateSettings":"j7xLx","./braintree":"jg8pV","morgan":"2qzOW"}],"boTQ2":[function(require,module,exports) {
 /* eslint-disable */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "displayMap", ()=>displayMap);
@@ -4468,6 +4488,1425 @@ const updateSettings = async (data, type)=>{
     }
 };
 
-},{"axios":"5vw73","./alerts":"97oIL","@parcel/transformer-js/src/esmodule-helpers.js":"fofuL"}]},["fSlqf"], "fSlqf", "parcelRequire11c7")
+},{"axios":"5vw73","./alerts":"97oIL","@parcel/transformer-js/src/esmodule-helpers.js":"fofuL"}],"jg8pV":[function(require,module,exports) {
+/* eslint-disable */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "getToken", ()=>getToken);
+parcelHelpers.export(exports, "createDropIn", ()=>createDropIn);
+parcelHelpers.export(exports, "sendNonce", ()=>sendNonce);
+var _axios = require("axios");
+var _axiosDefault = parcelHelpers.interopDefault(_axios);
+var _alerts = require("./alerts");
+const getToken = async ()=>{
+    try {
+        const res = await (0, _axiosDefault.default)({
+            method: "GET",
+            url: "http://127.0.0.1:8000/api/v1/bookings/client_token"
+        });
+        return res.data.clientToken;
+    } catch (err) {
+        (0, _alerts.showAlert)("error", err.response.data.message);
+    }
+};
+const createDropIn = async (token)=>{
+    try {
+        const dropinInstance = await braintree.dropin.create({
+            authorization: token,
+            container: "#dropin-container"
+        });
+        return dropinInstance;
+    } catch (err) {
+        console.error(err);
+    }
+};
+const sendNonce = async (dropinInstance, tourId)=>{
+    try {
+        const payload = await dropinInstance.requestPaymentMethod();
+        const nonce = payload.nonce;
+        await (0, _axiosDefault.default)({
+            method: "POST",
+            url: "http://127.0.0.1:8000/api/v1/bookings/checkout",
+            data: {
+                payment_method_nonce: nonce,
+                tourId
+            }
+        });
+    } catch (err) {
+        console.log(err.response.data.message);
+    }
+};
+
+},{"axios":"5vw73","./alerts":"97oIL","@parcel/transformer-js/src/esmodule-helpers.js":"fofuL"}],"2qzOW":[function(require,module,exports) {
+/*!
+ * morgan
+ * Copyright(c) 2010 Sencha Inc.
+ * Copyright(c) 2011 TJ Holowaychuk
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2014-2017 Douglas Christopher Wilson
+ * MIT Licensed
+ */ var process = require("c4c6bb44d7392cf7");
+"use strict";
+/**
+ * Module exports.
+ * @public
+ */ module.exports = morgan;
+module.exports.compile = compile;
+module.exports.format = format;
+module.exports.token = token;
+/**
+ * Module dependencies.
+ * @private
+ */ var auth = require("fed792582318fcba");
+var debug = require("71fb3788ace1e0b8")("morgan");
+var deprecate = require("96beff548403696f")("morgan");
+var onFinished = require("4fd238798ecc86e7");
+var onHeaders = require("ad4c038aba6b103d");
+/**
+ * Array of CLF month names.
+ * @private
+ */ var CLF_MONTH = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+];
+/**
+ * Default log buffer duration.
+ * @private
+ */ var DEFAULT_BUFFER_DURATION = 1000;
+/**
+ * Create a logger middleware.
+ *
+ * @public
+ * @param {String|Function} format
+ * @param {Object} [options]
+ * @return {Function} middleware
+ */ function morgan(format, options) {
+    var fmt = format;
+    var opts = options || {};
+    if (format && typeof format === "object") {
+        opts = format;
+        fmt = opts.format || "default";
+        // smart deprecation message
+        deprecate("morgan(options): use morgan(" + (typeof fmt === "string" ? JSON.stringify(fmt) : "format") + ", options) instead");
+    }
+    if (fmt === undefined) deprecate("undefined format: specify a format");
+    // output on request instead of response
+    var immediate = opts.immediate;
+    // check if log entry should be skipped
+    var skip = opts.skip || false;
+    // format function
+    var formatLine = typeof fmt !== "function" ? getFormatFunction(fmt) : fmt;
+    // stream
+    var buffer = opts.buffer;
+    var stream = opts.stream || process.stdout;
+    // buffering support
+    if (buffer) {
+        deprecate("buffer option");
+        // flush interval
+        var interval = typeof buffer !== "number" ? DEFAULT_BUFFER_DURATION : buffer;
+        // swap the stream
+        stream = createBufferStream(stream, interval);
+    }
+    return function logger(req, res, next) {
+        // request data
+        req._startAt = undefined;
+        req._startTime = undefined;
+        req._remoteAddress = getip(req);
+        // response data
+        res._startAt = undefined;
+        res._startTime = undefined;
+        // record request start
+        recordStartTime.call(req);
+        function logRequest() {
+            if (skip !== false && skip(req, res)) {
+                debug("skip request");
+                return;
+            }
+            var line = formatLine(morgan, req, res);
+            if (line == null) {
+                debug("skip line");
+                return;
+            }
+            debug("log request");
+            stream.write(line + "\n");
+        }
+        if (immediate) // immediate log
+        logRequest();
+        else {
+            // record response start
+            onHeaders(res, recordStartTime);
+            // log when response finished
+            onFinished(res, logRequest);
+        }
+        next();
+    };
+}
+/**
+ * Apache combined log format.
+ */ morgan.format("combined", ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"');
+/**
+ * Apache common log format.
+ */ morgan.format("common", ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length]');
+/**
+ * Default format.
+ */ morgan.format("default", ':remote-addr - :remote-user [:date] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"');
+deprecate.property(morgan, "default", "default format: use combined format");
+/**
+ * Short format.
+ */ morgan.format("short", ":remote-addr :remote-user :method :url HTTP/:http-version :status :res[content-length] - :response-time ms");
+/**
+ * Tiny format.
+ */ morgan.format("tiny", ":method :url :status :res[content-length] - :response-time ms");
+/**
+ * dev (colored)
+ */ morgan.format("dev", function developmentFormatLine(tokens, req, res) {
+    // get the status code if response written
+    var status = headersSent(res) ? res.statusCode : undefined;
+    // get status color
+    var color = status >= 500 ? 31 // red
+     : status >= 400 ? 33 // yellow
+     : status >= 300 ? 36 // cyan
+     : status >= 200 ? 32 // green
+     : 0 // no color
+    ;
+    // get colored function
+    var fn = developmentFormatLine[color];
+    if (!fn) // compile
+    fn = developmentFormatLine[color] = compile("\x1b[0m:method :url \x1b[" + color + "m:status\x1b[0m :response-time ms - :res[content-length]\x1b[0m");
+    return fn(tokens, req, res);
+});
+/**
+ * request url
+ */ morgan.token("url", function getUrlToken(req) {
+    return req.originalUrl || req.url;
+});
+/**
+ * request method
+ */ morgan.token("method", function getMethodToken(req) {
+    return req.method;
+});
+/**
+ * response time in milliseconds
+ */ morgan.token("response-time", function getResponseTimeToken(req, res, digits) {
+    if (!req._startAt || !res._startAt) // missing request and/or response start time
+    return;
+    // calculate diff
+    var ms = (res._startAt[0] - req._startAt[0]) * 1e3 + (res._startAt[1] - req._startAt[1]) * 1e-6;
+    // return truncated value
+    return ms.toFixed(digits === undefined ? 3 : digits);
+});
+/**
+ * total time in milliseconds
+ */ morgan.token("total-time", function getTotalTimeToken(req, res, digits) {
+    if (!req._startAt || !res._startAt) // missing request and/or response start time
+    return;
+    // time elapsed from request start
+    var elapsed = process.hrtime(req._startAt);
+    // cover to milliseconds
+    var ms = elapsed[0] * 1e3 + elapsed[1] * 1e-6;
+    // return truncated value
+    return ms.toFixed(digits === undefined ? 3 : digits);
+});
+/**
+ * current date
+ */ morgan.token("date", function getDateToken(req, res, format) {
+    var date = new Date();
+    switch(format || "web"){
+        case "clf":
+            return clfdate(date);
+        case "iso":
+            return date.toISOString();
+        case "web":
+            return date.toUTCString();
+    }
+});
+/**
+ * response status code
+ */ morgan.token("status", function getStatusToken(req, res) {
+    return headersSent(res) ? String(res.statusCode) : undefined;
+});
+/**
+ * normalized referrer
+ */ morgan.token("referrer", function getReferrerToken(req) {
+    return req.headers.referer || req.headers.referrer;
+});
+/**
+ * remote address
+ */ morgan.token("remote-addr", getip);
+/**
+ * remote user
+ */ morgan.token("remote-user", function getRemoteUserToken(req) {
+    // parse basic credentials
+    var credentials = auth(req);
+    // return username
+    return credentials ? credentials.name : undefined;
+});
+/**
+ * HTTP version
+ */ morgan.token("http-version", function getHttpVersionToken(req) {
+    return req.httpVersionMajor + "." + req.httpVersionMinor;
+});
+/**
+ * UA string
+ */ morgan.token("user-agent", function getUserAgentToken(req) {
+    return req.headers["user-agent"];
+});
+/**
+ * request header
+ */ morgan.token("req", function getRequestToken(req, res, field) {
+    // get header
+    var header = req.headers[field.toLowerCase()];
+    return Array.isArray(header) ? header.join(", ") : header;
+});
+/**
+ * response header
+ */ morgan.token("res", function getResponseHeader(req, res, field) {
+    if (!headersSent(res)) return undefined;
+    // get header
+    var header = res.getHeader(field);
+    return Array.isArray(header) ? header.join(", ") : header;
+});
+/**
+ * Format a Date in the common log format.
+ *
+ * @private
+ * @param {Date} dateTime
+ * @return {string}
+ */ function clfdate(dateTime) {
+    var date = dateTime.getUTCDate();
+    var hour = dateTime.getUTCHours();
+    var mins = dateTime.getUTCMinutes();
+    var secs = dateTime.getUTCSeconds();
+    var year = dateTime.getUTCFullYear();
+    var month = CLF_MONTH[dateTime.getUTCMonth()];
+    return pad2(date) + "/" + month + "/" + year + ":" + pad2(hour) + ":" + pad2(mins) + ":" + pad2(secs) + " +0000";
+}
+/**
+ * Compile a format string into a function.
+ *
+ * @param {string} format
+ * @return {function}
+ * @public
+ */ function compile(format) {
+    if (typeof format !== "string") throw new TypeError("argument format must be a string");
+    var fmt = String(JSON.stringify(format));
+    var js = '  "use strict"\n  return ' + fmt.replace(/:([-\w]{2,})(?:\[([^\]]+)\])?/g, function(_, name, arg) {
+        var tokenArguments = "req, res";
+        var tokenFunction = "tokens[" + String(JSON.stringify(name)) + "]";
+        if (arg !== undefined) tokenArguments += ", " + String(JSON.stringify(arg));
+        return '" +\n    (' + tokenFunction + "(" + tokenArguments + ') || "-") + "';
+    });
+    // eslint-disable-next-line no-new-func
+    return new Function("tokens, req, res", js);
+}
+/**
+ * Create a basic buffering stream.
+ *
+ * @param {object} stream
+ * @param {number} interval
+ * @public
+ */ function createBufferStream(stream, interval) {
+    var buf = [];
+    var timer = null;
+    // flush function
+    function flush() {
+        timer = null;
+        stream.write(buf.join(""));
+        buf.length = 0;
+    }
+    // write function
+    function write(str) {
+        if (timer === null) timer = setTimeout(flush, interval);
+        buf.push(str);
+    }
+    // return a minimal "stream"
+    return {
+        write: write
+    };
+}
+/**
+ * Define a format with the given name.
+ *
+ * @param {string} name
+ * @param {string|function} fmt
+ * @public
+ */ function format(name, fmt) {
+    morgan[name] = fmt;
+    return this;
+}
+/**
+ * Lookup and compile a named format function.
+ *
+ * @param {string} name
+ * @return {function}
+ * @public
+ */ function getFormatFunction(name) {
+    // lookup format
+    var fmt = morgan[name] || name || morgan.default;
+    // return compiled format
+    return typeof fmt !== "function" ? compile(fmt) : fmt;
+}
+/**
+ * Get request IP address.
+ *
+ * @private
+ * @param {IncomingMessage} req
+ * @return {string}
+ */ function getip(req) {
+    return req.ip || req._remoteAddress || req.connection && req.connection.remoteAddress || undefined;
+}
+/**
+ * Determine if the response headers have been sent.
+ *
+ * @param {object} res
+ * @returns {boolean}
+ * @private
+ */ function headersSent(res) {
+    // istanbul ignore next: node.js 0.8 support
+    return typeof res.headersSent !== "boolean" ? Boolean(res._header) : res.headersSent;
+}
+/**
+ * Pad number to two digits.
+ *
+ * @private
+ * @param {number} num
+ * @return {string}
+ */ function pad2(num) {
+    var str = String(num);
+    // istanbul ignore next: num is current datetime
+    return (str.length === 1 ? "0" : "") + str;
+}
+/**
+ * Record the start time.
+ * @private
+ */ function recordStartTime() {
+    this._startAt = process.hrtime();
+    this._startTime = new Date();
+}
+/**
+ * Define a token function with the given name,
+ * and callback fn(req, res).
+ *
+ * @param {string} name
+ * @param {function} fn
+ * @public
+ */ function token(name, fn) {
+    morgan[name] = fn;
+    return this;
+}
+
+},{"c4c6bb44d7392cf7":"ib7m0","fed792582318fcba":"5fZam","71fb3788ace1e0b8":"aQ1hi","96beff548403696f":"2osN8","4fd238798ecc86e7":"dqHNb","ad4c038aba6b103d":"4NUAd"}],"ib7m0":[function(require,module,exports) {
+// shim for using process in browser
+var process = module.exports = {};
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+var cachedSetTimeout;
+var cachedClearTimeout;
+function defaultSetTimout() {
+    throw new Error("setTimeout has not been defined");
+}
+function defaultClearTimeout() {
+    throw new Error("clearTimeout has not been defined");
+}
+(function() {
+    try {
+        if (typeof setTimeout === "function") cachedSetTimeout = setTimeout;
+        else cachedSetTimeout = defaultSetTimout;
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === "function") cachedClearTimeout = clearTimeout;
+        else cachedClearTimeout = defaultClearTimeout;
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+})();
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) //normal enviroments in sane situations
+    return setTimeout(fun, 0);
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch (e) {
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch (e) {
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) //normal enviroments in sane situations
+    return clearTimeout(marker);
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e) {
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e) {
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) return;
+    draining = false;
+    if (currentQueue.length) queue = currentQueue.concat(queue);
+    else queueIndex = -1;
+    if (queue.length) drainQueue();
+}
+function drainQueue() {
+    if (draining) return;
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+    var len = queue.length;
+    while(len){
+        currentQueue = queue;
+        queue = [];
+        while(++queueIndex < len)if (currentQueue) currentQueue[queueIndex].run();
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+process.nextTick = function(fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) for(var i = 1; i < arguments.length; i++)args[i - 1] = arguments[i];
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) runTimeout(drainQueue);
+};
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function() {
+    this.fun.apply(null, this.array);
+};
+process.title = "browser";
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ""; // empty string to avoid regexp issues
+process.versions = {};
+function noop() {}
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+process.listeners = function(name) {
+    return [];
+};
+process.binding = function(name) {
+    throw new Error("process.binding is not supported");
+};
+process.cwd = function() {
+    return "/";
+};
+process.chdir = function(dir) {
+    throw new Error("process.chdir is not supported");
+};
+process.umask = function() {
+    return 0;
+};
+
+},{}],"5fZam":[function(require,module,exports) {
+/*!
+ * basic-auth
+ * Copyright(c) 2013 TJ Holowaychuk
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2015-2016 Douglas Christopher Wilson
+ * MIT Licensed
+ */ "use strict";
+/**
+ * Module dependencies.
+ * @private
+ */ var Buffer = require("1ebcf91fcf8e8fd5").Buffer;
+/**
+ * Module exports.
+ * @public
+ */ module.exports = auth;
+module.exports.parse = parse;
+/**
+ * RegExp for basic auth credentials
+ *
+ * credentials = auth-scheme 1*SP token68
+ * auth-scheme = "Basic" ; case insensitive
+ * token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
+ * @private
+ */ var CREDENTIALS_REGEXP = /^ *(?:[Bb][Aa][Ss][Ii][Cc]) +([A-Za-z0-9._~+/-]+=*) *$/;
+/**
+ * RegExp for basic auth user/pass
+ *
+ * user-pass   = userid ":" password
+ * userid      = *<TEXT excluding ":">
+ * password    = *TEXT
+ * @private
+ */ var USER_PASS_REGEXP = /^([^:]*):(.*)$/;
+/**
+ * Parse the Authorization header field of a request.
+ *
+ * @param {object} req
+ * @return {object} with .name and .pass
+ * @public
+ */ function auth(req) {
+    if (!req) throw new TypeError("argument req is required");
+    if (typeof req !== "object") throw new TypeError("argument req is required to be an object");
+    // get header
+    var header = getAuthorization(req);
+    // parse header
+    return parse(header);
+}
+/**
+ * Decode base64 string.
+ * @private
+ */ function decodeBase64(str) {
+    return Buffer.from(str, "base64").toString();
+}
+/**
+ * Get the Authorization header from request object.
+ * @private
+ */ function getAuthorization(req) {
+    if (!req.headers || typeof req.headers !== "object") throw new TypeError("argument req is required to have headers property");
+    return req.headers.authorization;
+}
+/**
+ * Parse basic auth to object.
+ *
+ * @param {string} string
+ * @return {object}
+ * @public
+ */ function parse(string) {
+    if (typeof string !== "string") return undefined;
+    // parse header
+    var match = CREDENTIALS_REGEXP.exec(string);
+    if (!match) return undefined;
+    // decode user pass
+    var userPass = USER_PASS_REGEXP.exec(decodeBase64(match[1]));
+    if (!userPass) return undefined;
+    // return credentials object
+    return new Credentials(userPass[1], userPass[2]);
+}
+/**
+ * Object to represent user credentials.
+ * @private
+ */ function Credentials(name, pass) {
+    this.name = name;
+    this.pass = pass;
+}
+
+},{"1ebcf91fcf8e8fd5":"8fihT"}],"8fihT":[function(require,module,exports) {
+/* eslint-disable node/no-deprecated-api */ var buffer = require("4c3b35ae5c72ff2f");
+var Buffer = buffer.Buffer;
+// alternative to using Object.keys for old browsers
+function copyProps(src, dst) {
+    for(var key in src)dst[key] = src[key];
+}
+if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) module.exports = buffer;
+else {
+    // Copy properties from require('buffer')
+    copyProps(buffer, exports);
+    exports.Buffer = SafeBuffer;
+}
+function SafeBuffer(arg, encodingOrOffset, length) {
+    return Buffer(arg, encodingOrOffset, length);
+}
+// Copy static methods from Buffer
+copyProps(Buffer, SafeBuffer);
+SafeBuffer.from = function(arg, encodingOrOffset, length) {
+    if (typeof arg === "number") throw new TypeError("Argument must not be a number");
+    return Buffer(arg, encodingOrOffset, length);
+};
+SafeBuffer.alloc = function(size, fill, encoding) {
+    if (typeof size !== "number") throw new TypeError("Argument must be a number");
+    var buf = Buffer(size);
+    if (fill !== undefined) {
+        if (typeof encoding === "string") buf.fill(fill, encoding);
+        else buf.fill(fill);
+    } else buf.fill(0);
+    return buf;
+};
+SafeBuffer.allocUnsafe = function(size) {
+    if (typeof size !== "number") throw new TypeError("Argument must be a number");
+    return Buffer(size);
+};
+SafeBuffer.allocUnsafeSlow = function(size) {
+    if (typeof size !== "number") throw new TypeError("Argument must be a number");
+    return buffer.SlowBuffer(size);
+};
+
+},{"4c3b35ae5c72ff2f":"ecYRh"}],"aQ1hi":[function(require,module,exports) {
+/**
+ * This is the web browser implementation of `debug()`.
+ *
+ * Expose `debug()` as the module.
+ */ var process = require("8b9aaf0387b3e1d9");
+exports = module.exports = require("1db5db2a81b7b9b");
+exports.log = log;
+exports.formatArgs = formatArgs;
+exports.save = save;
+exports.load = load;
+exports.useColors = useColors;
+exports.storage = "undefined" != typeof chrome && "undefined" != typeof chrome.storage ? chrome.storage.local : localstorage();
+/**
+ * Colors.
+ */ exports.colors = [
+    "lightseagreen",
+    "forestgreen",
+    "goldenrod",
+    "dodgerblue",
+    "darkorchid",
+    "crimson"
+];
+/**
+ * Currently only WebKit-based Web Inspectors, Firefox >= v31,
+ * and the Firebug extension (any Firefox version) are known
+ * to support "%c" CSS customizations.
+ *
+ * TODO: add a `localStorage` variable to explicitly enable/disable colors
+ */ function useColors() {
+    // NB: In an Electron preload script, document will be defined but not fully
+    // initialized. Since we know we're in Chrome, we'll just detect this case
+    // explicitly
+    if (typeof window !== "undefined" && window.process && window.process.type === "renderer") return true;
+    // is webkit? http://stackoverflow.com/a/16459606/376773
+    // document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+    return typeof document !== "undefined" && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // is firebug? http://stackoverflow.com/a/398120/376773
+    typeof window !== "undefined" && window.console && (window.console.firebug || window.console.exception && window.console.table) || // is firefox >= v31?
+    // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
+    typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31 || // double check webkit in userAgent just in case we are in a worker
+    typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
+}
+/**
+ * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
+ */ exports.formatters.j = function(v) {
+    try {
+        return JSON.stringify(v);
+    } catch (err) {
+        return "[UnexpectedJSONParseError]: " + err.message;
+    }
+};
+/**
+ * Colorize log arguments if enabled.
+ *
+ * @api public
+ */ function formatArgs(args) {
+    var useColors = this.useColors;
+    args[0] = (useColors ? "%c" : "") + this.namespace + (useColors ? " %c" : " ") + args[0] + (useColors ? "%c " : " ") + "+" + exports.humanize(this.diff);
+    if (!useColors) return;
+    var c = "color: " + this.color;
+    args.splice(1, 0, c, "color: inherit");
+    // the final "%c" is somewhat tricky, because there could be other
+    // arguments passed either before or after the %c, so we need to
+    // figure out the correct index to insert the CSS into
+    var index = 0;
+    var lastC = 0;
+    args[0].replace(/%[a-zA-Z%]/g, function(match) {
+        if ("%%" === match) return;
+        index++;
+        if ("%c" === match) // we only are interested in the *last* %c
+        // (the user may have provided their own)
+        lastC = index;
+    });
+    args.splice(lastC, 0, c);
+}
+/**
+ * Invokes `console.log()` when available.
+ * No-op when `console.log` is not a "function".
+ *
+ * @api public
+ */ function log() {
+    // this hackery is required for IE8/9, where
+    // the `console.log` function doesn't have 'apply'
+    return "object" === typeof console && console.log && Function.prototype.apply.call(console.log, console, arguments);
+}
+/**
+ * Save `namespaces`.
+ *
+ * @param {String} namespaces
+ * @api private
+ */ function save(namespaces) {
+    try {
+        if (null == namespaces) exports.storage.removeItem("debug");
+        else exports.storage.debug = namespaces;
+    } catch (e) {}
+}
+/**
+ * Load `namespaces`.
+ *
+ * @return {String} returns the previously persisted debug modes
+ * @api private
+ */ function load() {
+    var r;
+    try {
+        r = exports.storage.debug;
+    } catch (e) {}
+    // If debug isn't set in LS, and we're in Electron, try to load $DEBUG
+    if (!r && typeof process !== "undefined" && "env" in process) r = undefined;
+    return r;
+}
+/**
+ * Enable namespaces listed in `localStorage.debug` initially.
+ */ exports.enable(load());
+/**
+ * Localstorage attempts to return the localstorage.
+ *
+ * This is necessary because safari throws
+ * when a user disables cookies/localstorage
+ * and you attempt to access it.
+ *
+ * @return {LocalStorage}
+ * @api private
+ */ function localstorage() {
+    try {
+        return window.localStorage;
+    } catch (e) {}
+}
+
+},{"8b9aaf0387b3e1d9":"ib7m0","1db5db2a81b7b9b":"a9MMs"}],"a9MMs":[function(require,module,exports) {
+/**
+ * This is the common logic for both the Node.js and web browser
+ * implementations of `debug()`.
+ *
+ * Expose `debug()` as the module.
+ */ exports = module.exports = createDebug.debug = createDebug["default"] = createDebug;
+exports.coerce = coerce;
+exports.disable = disable;
+exports.enable = enable;
+exports.enabled = enabled;
+exports.humanize = require("3b0cdf80a4f9d552");
+/**
+ * The currently active debug mode names, and names to skip.
+ */ exports.names = [];
+exports.skips = [];
+/**
+ * Map of special "%n" handling functions, for the debug "format" argument.
+ *
+ * Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
+ */ exports.formatters = {};
+/**
+ * Previous log timestamp.
+ */ var prevTime;
+/**
+ * Select a color.
+ * @param {String} namespace
+ * @return {Number}
+ * @api private
+ */ function selectColor(namespace) {
+    var hash = 0, i;
+    for(i in namespace){
+        hash = (hash << 5) - hash + namespace.charCodeAt(i);
+        hash |= 0; // Convert to 32bit integer
+    }
+    return exports.colors[Math.abs(hash) % exports.colors.length];
+}
+/**
+ * Create a debugger with the given `namespace`.
+ *
+ * @param {String} namespace
+ * @return {Function}
+ * @api public
+ */ function createDebug(namespace) {
+    function debug() {
+        // disabled?
+        if (!debug.enabled) return;
+        var self = debug;
+        // set `diff` timestamp
+        var curr = +new Date();
+        var ms = curr - (prevTime || curr);
+        self.diff = ms;
+        self.prev = prevTime;
+        self.curr = curr;
+        prevTime = curr;
+        // turn the `arguments` into a proper Array
+        var args = new Array(arguments.length);
+        for(var i = 0; i < args.length; i++)args[i] = arguments[i];
+        args[0] = exports.coerce(args[0]);
+        if ("string" !== typeof args[0]) // anything else let's inspect with %O
+        args.unshift("%O");
+        // apply any `formatters` transformations
+        var index = 0;
+        args[0] = args[0].replace(/%([a-zA-Z%])/g, function(match, format) {
+            // if we encounter an escaped % then don't increase the array index
+            if (match === "%%") return match;
+            index++;
+            var formatter = exports.formatters[format];
+            if ("function" === typeof formatter) {
+                var val = args[index];
+                match = formatter.call(self, val);
+                // now we need to remove `args[index]` since it's inlined in the `format`
+                args.splice(index, 1);
+                index--;
+            }
+            return match;
+        });
+        // apply env-specific formatting (colors, etc.)
+        exports.formatArgs.call(self, args);
+        var logFn = debug.log || exports.log || console.log.bind(console);
+        logFn.apply(self, args);
+    }
+    debug.namespace = namespace;
+    debug.enabled = exports.enabled(namespace);
+    debug.useColors = exports.useColors();
+    debug.color = selectColor(namespace);
+    // env-specific initialization logic for debug instances
+    if ("function" === typeof exports.init) exports.init(debug);
+    return debug;
+}
+/**
+ * Enables a debug mode by namespaces. This can include modes
+ * separated by a colon and wildcards.
+ *
+ * @param {String} namespaces
+ * @api public
+ */ function enable(namespaces) {
+    exports.save(namespaces);
+    exports.names = [];
+    exports.skips = [];
+    var split = (typeof namespaces === "string" ? namespaces : "").split(/[\s,]+/);
+    var len = split.length;
+    for(var i = 0; i < len; i++){
+        if (!split[i]) continue; // ignore empty strings
+        namespaces = split[i].replace(/\*/g, ".*?");
+        if (namespaces[0] === "-") exports.skips.push(new RegExp("^" + namespaces.substr(1) + "$"));
+        else exports.names.push(new RegExp("^" + namespaces + "$"));
+    }
+}
+/**
+ * Disable debug output.
+ *
+ * @api public
+ */ function disable() {
+    exports.enable("");
+}
+/**
+ * Returns true if the given mode name is enabled, false otherwise.
+ *
+ * @param {String} name
+ * @return {Boolean}
+ * @api public
+ */ function enabled(name) {
+    var i, len;
+    for(i = 0, len = exports.skips.length; i < len; i++){
+        if (exports.skips[i].test(name)) return false;
+    }
+    for(i = 0, len = exports.names.length; i < len; i++){
+        if (exports.names[i].test(name)) return true;
+    }
+    return false;
+}
+/**
+ * Coerce `val`.
+ *
+ * @param {Mixed} val
+ * @return {Mixed}
+ * @api private
+ */ function coerce(val) {
+    if (val instanceof Error) return val.stack || val.message;
+    return val;
+}
+
+},{"3b0cdf80a4f9d552":"b09M6"}],"b09M6":[function(require,module,exports) {
+/**
+ * Helpers.
+ */ var s = 1000;
+var m = s * 60;
+var h = m * 60;
+var d = h * 24;
+var y = d * 365.25;
+/**
+ * Parse or format the given `val`.
+ *
+ * Options:
+ *
+ *  - `long` verbose formatting [false]
+ *
+ * @param {String|Number} val
+ * @param {Object} [options]
+ * @throws {Error} throw an error if val is not a non-empty string or a number
+ * @return {String|Number}
+ * @api public
+ */ module.exports = function(val, options) {
+    options = options || {};
+    var type = typeof val;
+    if (type === "string" && val.length > 0) return parse(val);
+    else if (type === "number" && isNaN(val) === false) return options.long ? fmtLong(val) : fmtShort(val);
+    throw new Error("val is not a non-empty string or a valid number. val=" + JSON.stringify(val));
+};
+/**
+ * Parse the given `str` and return milliseconds.
+ *
+ * @param {String} str
+ * @return {Number}
+ * @api private
+ */ function parse(str) {
+    str = String(str);
+    if (str.length > 100) return;
+    var match = /^((?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|years?|yrs?|y)?$/i.exec(str);
+    if (!match) return;
+    var n = parseFloat(match[1]);
+    var type = (match[2] || "ms").toLowerCase();
+    switch(type){
+        case "years":
+        case "year":
+        case "yrs":
+        case "yr":
+        case "y":
+            return n * y;
+        case "days":
+        case "day":
+        case "d":
+            return n * d;
+        case "hours":
+        case "hour":
+        case "hrs":
+        case "hr":
+        case "h":
+            return n * h;
+        case "minutes":
+        case "minute":
+        case "mins":
+        case "min":
+        case "m":
+            return n * m;
+        case "seconds":
+        case "second":
+        case "secs":
+        case "sec":
+        case "s":
+            return n * s;
+        case "milliseconds":
+        case "millisecond":
+        case "msecs":
+        case "msec":
+        case "ms":
+            return n;
+        default:
+            return undefined;
+    }
+}
+/**
+ * Short format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */ function fmtShort(ms) {
+    if (ms >= d) return Math.round(ms / d) + "d";
+    if (ms >= h) return Math.round(ms / h) + "h";
+    if (ms >= m) return Math.round(ms / m) + "m";
+    if (ms >= s) return Math.round(ms / s) + "s";
+    return ms + "ms";
+}
+/**
+ * Long format for `ms`.
+ *
+ * @param {Number} ms
+ * @return {String}
+ * @api private
+ */ function fmtLong(ms) {
+    return plural(ms, d, "day") || plural(ms, h, "hour") || plural(ms, m, "minute") || plural(ms, s, "second") || ms + " ms";
+}
+/**
+ * Pluralization helper.
+ */ function plural(ms, n, name) {
+    if (ms < n) return;
+    if (ms < n * 1.5) return Math.floor(ms / n) + " " + name;
+    return Math.ceil(ms / n) + " " + name + "s";
+}
+
+},{}],"2osN8":[function(require,module,exports) {
+/*!
+ * depd
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */ "use strict";
+/**
+ * Module exports.
+ * @public
+ */ module.exports = depd;
+/**
+ * Create deprecate for namespace in caller.
+ */ function depd(namespace) {
+    if (!namespace) throw new TypeError("argument namespace is required");
+    function deprecate(message) {
+    // no-op in browser
+    }
+    deprecate._file = undefined;
+    deprecate._ignored = true;
+    deprecate._namespace = namespace;
+    deprecate._traced = false;
+    deprecate._warned = Object.create(null);
+    deprecate.function = wrapfunction;
+    deprecate.property = wrapproperty;
+    return deprecate;
+}
+/**
+ * Return a wrapped function in a deprecation message.
+ *
+ * This is a no-op version of the wrapper, which does nothing but call
+ * validation.
+ */ function wrapfunction(fn, message) {
+    if (typeof fn !== "function") throw new TypeError("argument fn must be a function");
+    return fn;
+}
+/**
+ * Wrap property in a deprecation message.
+ *
+ * This is a no-op version of the wrapper, which does nothing but call
+ * validation.
+ */ function wrapproperty(obj, prop, message) {
+    if (!obj || typeof obj !== "object" && typeof obj !== "function") throw new TypeError("argument obj must be object");
+    var descriptor = Object.getOwnPropertyDescriptor(obj, prop);
+    if (!descriptor) throw new TypeError("must call property on owner object");
+    if (!descriptor.configurable) throw new TypeError("property must be configurable");
+}
+
+},{}],"dqHNb":[function(require,module,exports) {
+/*!
+ * on-finished
+ * Copyright(c) 2013 Jonathan Ong
+ * Copyright(c) 2014 Douglas Christopher Wilson
+ * MIT Licensed
+ */ var process = require("838fdf182340e702");
+"use strict";
+/**
+ * Module exports.
+ * @public
+ */ module.exports = onFinished;
+module.exports.isFinished = isFinished;
+/**
+ * Module dependencies.
+ * @private
+ */ var first = require("1d92e3abc1fe31ae");
+/**
+ * Variables.
+ * @private
+ */ /* istanbul ignore next */ var defer = typeof setImmediate === "function" ? setImmediate : function(fn) {
+    process.nextTick(fn.bind.apply(fn, arguments));
+};
+/**
+ * Invoke callback when the response has finished, useful for
+ * cleaning up resources afterwards.
+ *
+ * @param {object} msg
+ * @param {function} listener
+ * @return {object}
+ * @public
+ */ function onFinished(msg, listener) {
+    if (isFinished(msg) !== false) {
+        defer(listener, null, msg);
+        return msg;
+    }
+    // attach the listener to the message
+    attachListener(msg, listener);
+    return msg;
+}
+/**
+ * Determine if message is already finished.
+ *
+ * @param {object} msg
+ * @return {boolean}
+ * @public
+ */ function isFinished(msg) {
+    var socket = msg.socket;
+    if (typeof msg.finished === "boolean") // OutgoingMessage
+    return Boolean(msg.finished || socket && !socket.writable);
+    if (typeof msg.complete === "boolean") // IncomingMessage
+    return Boolean(msg.upgrade || !socket || !socket.readable || msg.complete && !msg.readable);
+    // don't know
+    return undefined;
+}
+/**
+ * Attach a finished listener to the message.
+ *
+ * @param {object} msg
+ * @param {function} callback
+ * @private
+ */ function attachFinishedListener(msg, callback) {
+    var eeMsg;
+    var eeSocket;
+    var finished = false;
+    function onFinish(error) {
+        eeMsg.cancel();
+        eeSocket.cancel();
+        finished = true;
+        callback(error);
+    }
+    // finished on first message event
+    eeMsg = eeSocket = first([
+        [
+            msg,
+            "end",
+            "finish"
+        ]
+    ], onFinish);
+    function onSocket(socket) {
+        // remove listener
+        msg.removeListener("socket", onSocket);
+        if (finished) return;
+        if (eeMsg !== eeSocket) return;
+        // finished on first socket event
+        eeSocket = first([
+            [
+                socket,
+                "error",
+                "close"
+            ]
+        ], onFinish);
+    }
+    if (msg.socket) {
+        // socket already assigned
+        onSocket(msg.socket);
+        return;
+    }
+    // wait for socket to be assigned
+    msg.on("socket", onSocket);
+    if (msg.socket === undefined) // node.js 0.8 patch
+    patchAssignSocket(msg, onSocket);
+}
+/**
+ * Attach the listener to the message.
+ *
+ * @param {object} msg
+ * @return {function}
+ * @private
+ */ function attachListener(msg, listener) {
+    var attached = msg.__onFinished;
+    // create a private single listener with queue
+    if (!attached || !attached.queue) {
+        attached = msg.__onFinished = createListener(msg);
+        attachFinishedListener(msg, attached);
+    }
+    attached.queue.push(listener);
+}
+/**
+ * Create listener on message.
+ *
+ * @param {object} msg
+ * @return {function}
+ * @private
+ */ function createListener(msg) {
+    function listener(err) {
+        if (msg.__onFinished === listener) msg.__onFinished = null;
+        if (!listener.queue) return;
+        var queue = listener.queue;
+        listener.queue = null;
+        for(var i = 0; i < queue.length; i++)queue[i](err, msg);
+    }
+    listener.queue = [];
+    return listener;
+}
+/**
+ * Patch ServerResponse.prototype.assignSocket for node.js 0.8.
+ *
+ * @param {ServerResponse} res
+ * @param {function} callback
+ * @private
+ */ function patchAssignSocket(res, callback) {
+    var assignSocket = res.assignSocket;
+    if (typeof assignSocket !== "function") return;
+    // res.on('socket', callback) is broken in 0.8
+    res.assignSocket = function _assignSocket(socket) {
+        assignSocket.call(this, socket);
+        callback(socket);
+    };
+}
+
+},{"838fdf182340e702":"ib7m0","1d92e3abc1fe31ae":"hbtmY"}],"hbtmY":[function(require,module,exports) {
+/*!
+ * ee-first
+ * Copyright(c) 2014 Jonathan Ong
+ * MIT Licensed
+ */ "use strict";
+/**
+ * Module exports.
+ * @public
+ */ module.exports = first;
+/**
+ * Get the first event in a set of event emitters and event pairs.
+ *
+ * @param {array} stuff
+ * @param {function} done
+ * @public
+ */ function first(stuff, done) {
+    if (!Array.isArray(stuff)) throw new TypeError("arg must be an array of [ee, events...] arrays");
+    var cleanups = [];
+    for(var i = 0; i < stuff.length; i++){
+        var arr = stuff[i];
+        if (!Array.isArray(arr) || arr.length < 2) throw new TypeError("each array member must be [ee, events...]");
+        var ee = arr[0];
+        for(var j = 1; j < arr.length; j++){
+            var event = arr[j];
+            var fn = listener(event, callback);
+            // listen to the event
+            ee.on(event, fn);
+            // push this listener to the list of cleanups
+            cleanups.push({
+                ee: ee,
+                event: event,
+                fn: fn
+            });
+        }
+    }
+    function callback() {
+        cleanup();
+        done.apply(null, arguments);
+    }
+    function cleanup() {
+        var x;
+        for(var i = 0; i < cleanups.length; i++){
+            x = cleanups[i];
+            x.ee.removeListener(x.event, x.fn);
+        }
+    }
+    function thunk(fn) {
+        done = fn;
+    }
+    thunk.cancel = cleanup;
+    return thunk;
+}
+/**
+ * Create the event listener.
+ * @private
+ */ function listener(event, done) {
+    return function onevent(arg1) {
+        var args = new Array(arguments.length);
+        var ee = this;
+        var err = event === "error" ? arg1 : null;
+        // copy args to prevent arguments escaping scope
+        for(var i = 0; i < args.length; i++)args[i] = arguments[i];
+        done(err, ee, event, args);
+    };
+}
+
+},{}],"4NUAd":[function(require,module,exports) {
+/*!
+ * on-headers
+ * Copyright(c) 2014 Douglas Christopher Wilson
+ * MIT Licensed
+ */ "use strict";
+/**
+ * Module exports.
+ * @public
+ */ module.exports = onHeaders;
+/**
+ * Create a replacement writeHead method.
+ *
+ * @param {function} prevWriteHead
+ * @param {function} listener
+ * @private
+ */ function createWriteHead(prevWriteHead, listener) {
+    var fired = false;
+    // return function with core name and argument list
+    return function writeHead(statusCode) {
+        // set headers from arguments
+        var args = setWriteHeadHeaders.apply(this, arguments);
+        // fire listener
+        if (!fired) {
+            fired = true;
+            listener.call(this);
+            // pass-along an updated status code
+            if (typeof args[0] === "number" && this.statusCode !== args[0]) {
+                args[0] = this.statusCode;
+                args.length = 1;
+            }
+        }
+        return prevWriteHead.apply(this, args);
+    };
+}
+/**
+ * Execute a listener when a response is about to write headers.
+ *
+ * @param {object} res
+ * @return {function} listener
+ * @public
+ */ function onHeaders(res, listener) {
+    if (!res) throw new TypeError("argument res is required");
+    if (typeof listener !== "function") throw new TypeError("argument listener must be a function");
+    res.writeHead = createWriteHead(res.writeHead, listener);
+}
+/**
+ * Set headers contained in array on the response object.
+ *
+ * @param {object} res
+ * @param {array} headers
+ * @private
+ */ function setHeadersFromArray(res, headers) {
+    for(var i = 0; i < headers.length; i++)res.setHeader(headers[i][0], headers[i][1]);
+}
+/**
+ * Set headers contained in object on the response object.
+ *
+ * @param {object} res
+ * @param {object} headers
+ * @private
+ */ function setHeadersFromObject(res, headers) {
+    var keys = Object.keys(headers);
+    for(var i = 0; i < keys.length; i++){
+        var k = keys[i];
+        if (k) res.setHeader(k, headers[k]);
+    }
+}
+/**
+ * Set headers and other properties on the response object.
+ *
+ * @param {number} statusCode
+ * @private
+ */ function setWriteHeadHeaders(statusCode) {
+    var length = arguments.length;
+    var headerIndex = length > 1 && typeof arguments[1] === "string" ? 2 : 1;
+    var headers = length >= headerIndex + 1 ? arguments[headerIndex] : undefined;
+    this.statusCode = statusCode;
+    if (Array.isArray(headers)) // handle array case
+    setHeadersFromArray(this, headers);
+    else if (headers) // handle object case
+    setHeadersFromObject(this, headers);
+    // copy leading arguments
+    var args = new Array(Math.min(length, headerIndex));
+    for(var i = 0; i < args.length; i++)args[i] = arguments[i];
+    return args;
+}
+
+},{}]},["fSlqf"], "fSlqf", "parcelRequire11c7")
 
 //# sourceMappingURL=index.js.map
