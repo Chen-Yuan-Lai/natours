@@ -55,3 +55,11 @@ will emit an object called unhandled rejection
 and so we can subscribe to that event by creating
 another listener 
 */
+
+// handle sigterm signal sended by render when render restart your application
+process.on('SIGTERM', () => {
+  console.log('SIGTERM RECEIVED. Shutting down gracefully');
+  server.close(() => {
+    console.log('Process terminated!');
+  });
+});
