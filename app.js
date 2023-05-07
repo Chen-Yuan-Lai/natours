@@ -8,6 +8,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
+const cors = require('cors');
 
 const AppError = require('./utils/appError');
 const globalErrorhandler = require('./controllers/errorControllers');
@@ -23,7 +24,24 @@ app.enable('trust proxy');
 
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
+
 // 1) GLOBAL MIDDLEWARES
+// Implement CORS
+app.use(cors());
+// Access-Controller-Allow-Origin
+
+// Only allow specific origin to consume API
+// app.use(cors({
+//   origin: 'https://www.natours.com'
+// }))
+
+// When a non-simple request is used (delete, patch...),the browser will then automatically send
+// the preflight phase (options request) in order to figure out if the actual request is safe to
+// send. So when we get one of these options requests on our server, we then need to send back
+// the same Access-Control-Allow-Origin header.
+app.options('*', cors());
+// app.use('api/v1/tours/:id', cors())
+
 // Serving static files
 app.use(express.static(path.join(__dirname, 'public')));
 
